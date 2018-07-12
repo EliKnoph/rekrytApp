@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">rekryt</string>
+    <string name="app_name">LabyrintSwag</string>
+    <string name="button_name">On/Off</string>
 </resources>
