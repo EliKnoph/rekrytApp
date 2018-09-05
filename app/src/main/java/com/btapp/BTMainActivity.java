@@ -31,7 +31,7 @@ import android.widget.Toast;
 
 import static com.btapp.Utils.convertToJSON;
 
-public class BTMainActivity extends Activity implements SensorEventListener {
+public class BTMainActivity extends Activity {
 
     //BLUETOOTH
     private BluetoothSocket mmSocket;
@@ -51,10 +51,7 @@ public class BTMainActivity extends Activity implements SensorEventListener {
     private Sensor gyroSensor;
     private SensorEventListener gyroEventListener;
     private Sensor senAccelerometer;
-
-    private String xValue; //x-värdet från accelerometern som sträng etc..
-    private String yValue;
-    private String zValue;
+   private Accelerometer ac;
 
     //GUI
     private boolean gameOn; //has the game started or not????
@@ -69,7 +66,7 @@ public class BTMainActivity extends Activity implements SensorEventListener {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         senAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        sensorManager.registerListener((SensorEventListener) this, senAccelerometer , SensorManager.SENSOR_DELAY_NORMAL);
+//        sensorManager.registerListener((SensorEventListener) this, senAccelerometer , SensorManager.SENSOR_DELAY_NORMAL);
 
         //BLUETOOTH
         final Handler handler = new Handler();
@@ -109,16 +106,27 @@ public class BTMainActivity extends Activity implements SensorEventListener {
             }});
 
 
-        ITButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Toast.makeText(getContext(), "Helt rätt färg, IT äger!", Toast.LENGTH_SHORT).show();
-
-            }
-        });
 
 
         checkBluetooth(mBluetoothAdapter);
+
+        ac = new Accelerometer();
+
+
+        ac.onSensorChanged(ac.getSensorEvent());
+
+        if(gameOn && ac.isSensorAc(ac.getSensor())){
+            Handler hand = new Handler();
+            hand.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    doAction(convertToJSON("x",ac.getX(),"y",ac.getY(),"z",ac.getZ()));
+                    count++;
+                }
+            },500);
+
+
+        }
     }
 
     public Context getContext(){
@@ -191,7 +199,7 @@ public class BTMainActivity extends Activity implements SensorEventListener {
 
     }
 
-    @Override
+   /* @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
         Sensor mySensor = sensorEvent.sensor;
         boolean change = true;
@@ -232,7 +240,7 @@ public class BTMainActivity extends Activity implements SensorEventListener {
     @Override
     public void onPointerCaptureChanged(boolean hasCapture) {
 
-    }
+    }*/
 
 
     final class workerThread implements Runnable {
