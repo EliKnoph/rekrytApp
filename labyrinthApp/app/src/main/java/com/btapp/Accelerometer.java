@@ -82,5 +82,8 @@ public class Accelerometer implements SensorEventListener {
         return zValue;
     }
 
-
+    @Override
+    public String toString() {
+        return super.toString() + "x: " + xValue + "y: " + yValue + "z: " + zValue + sensor.toString() + sens.toString();
+    }
 }

@@ -10,17 +10,19 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.btapp.BTMainActivity"
-    android:background="@drawable/rekryt">
+    android:background="@drawable/bakgrund">
 
     <TextView
         android:id="@+id/coordinates"
-        android:layout_width="222dp"
-        android:layout_height="68dp"
+        android:layout_width="246dp"
+        android:layout_height="wrap_content"
         android:layout_below="@+id/startbutton"
         android:layout_centerHorizontal="true"
+        android:layout_marginTop="-210dp"
         android:shadowColor="#000000"
         android:shadowRadius="2"
         android:text="Press START and move around the phone to steer the labyrinth. Make sure the ball doesn't fall down a hole."
+        android:textAlignment="center"
         android:textColor="#ffffff"
         android:textSize="14sp"
         android:textStyle="bold" />
@@ -30,7 +32,7 @@
         android:layout_width="132dp"
         android:layout_height="92dp"
         android:layout_centerInParent="true"
-        android:background="#1be81f"
+        android:background="#ffffff"
         android:text="START"
         android:textSize="30sp" />
 

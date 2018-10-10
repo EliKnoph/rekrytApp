@@ -40,6 +40,8 @@ public class BTMainActivity extends Activity {
     private int count = 1;
     private boolean isConnected;
 
+    private int accCheckIntervallMilli = 500;
+
     private final byte delimiter = 33;
     private int readBufferPosition = 0;
 
@@ -48,10 +50,8 @@ public class BTMainActivity extends Activity {
 
     //GYROSCOPE or ACCELEROMETER
     private SensorManager sensorManager;
-    private Sensor gyroSensor;
-    private SensorEventListener gyroEventListener;
     private Sensor senAccelerometer;
-   private Accelerometer ac;
+    private Accelerometer ac;
 
     //GUI
     private boolean gameOn; //has the game started or not????
@@ -62,11 +62,13 @@ public class BTMainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         //ACCELEROMETER
+        ac = new Accelerometer();
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         senAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-//        sensorManager.registerListener((SensorEventListener) this, senAccelerometer , SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(ac, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+
 
         //BLUETOOTH
         final Handler handler = new Handler();
@@ -74,8 +76,8 @@ public class BTMainActivity extends Activity {
         final TextView myLabel = (TextView) findViewById(R.id.coordinates);
         final Button startButton = (Button) findViewById(R.id.startbutton);
         final Button ITButton = (Button) findViewById(R.id.ITButton);
-
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        System.out.println(mBluetoothAdapter);
         wt = new workerThread(null, handler);
 
         if(senAccelerometer == null){
@@ -89,7 +91,7 @@ public class BTMainActivity extends Activity {
                 String start = "START";
                 String stop = "STOP";
                 if(startButton.getText().equals(start)){
-                   // onResume();
+                    startThread();
                     gameOn = true;
                     Toast.makeText(getContext(), "Game started!", Toast.LENGTH_SHORT).show();
 
@@ -97,10 +99,10 @@ public class BTMainActivity extends Activity {
                     startButton.setBackgroundColor(Color.parseColor("#ff0000"));
                 }else{
                     gameOn = false;
-                    //onPause();
+                    stopThread();
                     startButton.setText(start);
                     Toast.makeText(getContext(), "Game stopped!", Toast.LENGTH_SHORT).show();
-                    startButton.setBackgroundColor(Color.parseColor("#1be81f"));
+                    startButton.setBackgroundColor(Color.parseColor("#ffffff"));
                 }
 
             }});
@@ -109,24 +111,33 @@ public class BTMainActivity extends Activity {
 
 
         checkBluetooth(mBluetoothAdapter);
+        listenToAccelerometer();
+    }
 
-        ac = new Accelerometer();
-
-
-        ac.onSensorChanged(ac.getSensorEvent());
-
-        if(gameOn && ac.isSensorAc(ac.getSensor())){
-            Handler hand = new Handler();
-            hand.postDelayed(new Runnable() {
+    private void listenToAccelerometer(){
+        Thread accCheckThread = new Thread(
+            new Runnable() {
+                Boolean hasNotCrashed = true;
                 @Override
                 public void run() {
-                    doAction(convertToJSON("x",ac.getX(),"y",ac.getY(),"z",ac.getZ()));
-                    count++;
+                    while(hasNotCrashed) {
+                        if (ac.getSensor() != null) {
+                            try {
+                                System.out.println("RUNNING ACC CHECK");
+                                String json = convertToJSON("x", ac.getX(), "y", ac.getY(), "z", ac.getZ());
+                                doAction(json);
+                                //count++;
+                                Thread.currentThread().sleep(accCheckIntervallMilli);
+                            } catch (InterruptedException e) {
+                                hasNotCrashed = false;
+                                System.out.println("ListenToAccelerometer crashed horribly");
+                            }
+                        }
+                    }
                 }
-            },500);
-
-
-        }
+            }
+        );
+        accCheckThread.start();
     }
 
     public Context getContext(){
@@ -142,18 +153,15 @@ public class BTMainActivity extends Activity {
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
         if(pairedDevices.size()>0){
             for (BluetoothDevice device : pairedDevices) {
-                if (device.getName().equals("raspberrypi")) //Note, you will need to change this to match the name of your device
+                if (device.getName().equals("raspberrypi"))
                 {
                     Log.e("Labyrintspelet", device.getName());
                     mmDevice = device;
                     break;
                 }
             }
-
         }
-
     }
-
 
     public void startSocket(String msg2send) {
         //UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
@@ -179,69 +187,31 @@ public class BTMainActivity extends Activity {
 
     }
 
-    public void doAction(String action) {
-        if(thread != null){
-            System.out.println("HYPELORD " + thread.isAlive());
-        }
-
+    public void startThread(){
         if(thread == null || !thread.isAlive()){
-            wt.setBtMsg(action);
+            wt.setBtMsg("start");
             thread = new Thread(wt);
             thread.start();
-        } else {
-            try {
-                OutputStream mmOutputStream = mmSocket.getOutputStream();
-                mmOutputStream.write(action.getBytes());
-            } catch (IOException e) {
-
-            }
-        }
-
-    }
-
-   /* @Override
-    public void onSensorChanged(SensorEvent sensorEvent) {
-        Sensor mySensor = sensorEvent.sensor;
-        boolean change = true;
-
-        if (mySensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            float x = sensorEvent.values[0];
-            float y = sensorEvent.values[1];
-            float z = sensorEvent.values[2];
-
-            xValue = Float.toString(x);
-            yValue = Float.toString(y);
-            zValue = Float.toString(z);
-
-            if(change && gameOn) {
-
-                Handler handler = new Handler();
-                handler.postDelayed(new Runnable() {
-                    public void run() {
-                        doAction(convertToJSON("x",xValue,"y",yValue,"z",zValue));
-                        count++;
-                    }
-                }, 500);
-
-
-
-            }else{
-
-            }
-
+        }else{
+            System.out.println("Thread could not be started.");
         }
     }
 
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-
+    public void stopThread(){
+        if(thread != null && thread.isAlive()){
+            thread.interrupt();
+        }else{
+            System.out.println("Thread could not be stopped.");
+        }
     }
 
-    @Override
-    public void onPointerCaptureChanged(boolean hasCapture) {
-
-    }*/
-
+    public void doAction(String action) {
+        System.out.println("DO ACTION " + action);
+        if(thread != null){
+            System.out.println("Trådstatus: " + thread.isAlive());
+        }
+        wt.setBtMsg(action);
+    }
 
     final class workerThread implements Runnable {
 
@@ -264,7 +234,7 @@ public class BTMainActivity extends Activity {
             while (!Thread.currentThread().isInterrupted()) {
                 int bytesAvailable;
                 boolean workDone = false;
-
+                System.out.println("Thread running 1");
                 try {
 
                     final InputStream mmInputStream;
@@ -304,10 +274,7 @@ public class BTMainActivity extends Activity {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-
             }
         }
     }
-
-
 }
