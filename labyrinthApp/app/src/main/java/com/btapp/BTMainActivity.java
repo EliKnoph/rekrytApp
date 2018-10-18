@@ -22,6 +22,7 @@ import android.hardware.SensorManager;
 
 
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
@@ -29,6 +30,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import static android.content.ContentValues.TAG;
 import static com.btapp.Utils.convertToJSON;
 
 public class BTMainActivity extends Activity {
@@ -40,7 +42,7 @@ public class BTMainActivity extends Activity {
     private int count = 1;
     private boolean isConnected;
 
-    private int accCheckIntervallMilli = 500;
+    private int accCheckIntervallMilli = 30;
 
     private final byte delimiter = 33;
     private int readBufferPosition = 0;
@@ -55,6 +57,8 @@ public class BTMainActivity extends Activity {
 
     //GUI
     private boolean gameOn; //has the game started or not????
+
+    CountDownTimer cTimer = null;
 
 
     @Override
@@ -76,6 +80,7 @@ public class BTMainActivity extends Activity {
         final TextView myLabel = (TextView) findViewById(R.id.coordinates);
         final Button startButton = (Button) findViewById(R.id.startbutton);
         final Button ITButton = (Button) findViewById(R.id.ITButton);
+
         BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         System.out.println(mBluetoothAdapter);
         wt = new workerThread(null, handler);
@@ -116,26 +121,26 @@ public class BTMainActivity extends Activity {
 
     private void listenToAccelerometer(){
         Thread accCheckThread = new Thread(
-            new Runnable() {
-                Boolean hasNotCrashed = true;
-                @Override
-                public void run() {
-                    while(hasNotCrashed) {
-                        if (ac.getSensor() != null) {
-                            try {
-                                System.out.println("RUNNING ACC CHECK");
-                                String json = convertToJSON("x", ac.getX(), "y", ac.getY(), "z", ac.getZ());
-                                doAction(json);
-                                //count++;
-                                Thread.currentThread().sleep(accCheckIntervallMilli);
-                            } catch (InterruptedException e) {
-                                hasNotCrashed = false;
-                                System.out.println("ListenToAccelerometer crashed horribly");
+                new Runnable() {
+                    Boolean hasNotCrashed = true;
+                    @Override
+                    public void run() {
+                        while(hasNotCrashed) {
+                            if (ac.getSensor() != null) {
+                                try {
+                                    System.out.println("RUNNING ACC CHECK");
+                                    String json = convertToJSON("x", ac.getX(), "y", ac.getY(), "z", ac.getZ());
+                                    doAction(json);
+                                    //count++;
+                                    Thread.currentThread().sleep(accCheckIntervallMilli);
+                                } catch (InterruptedException e) {
+                                    hasNotCrashed = false;
+                                    System.out.println("ListenToAccelerometer crashed horribly");
+                                }
                             }
                         }
                     }
                 }
-            }
         );
         accCheckThread.start();
     }
@@ -166,26 +171,28 @@ public class BTMainActivity extends Activity {
     public void startSocket(String msg2send) {
         //UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"); //Standard SerialPortService ID
         // UUID uuid = UUID.fromString("94f39d29-7d6d-437d-973b-fba39e49d4ee"); //Standard SerialPortService ID
-        UUID uuid = UUID.fromString(("01195ea7-dc96-4750-9c34-4d28e110f201"));
+        //UUID uuid = UUID.fromString("01195ea7-dc96-4750-9c34-4d28e110f201");
+        UUID uuid = UUID.fromString("0000000-0000-1000-8000-00805F9B34FB");
+        System.out.println("Kommer vi hit?");
         try {
             mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
             System.out.println("Trying to connect");
+            System.out.println("Socket status: " + mmSocket.isConnected());
             if (!mmSocket.isConnected()) {
+                System.out.println("Attempting to connect socket");
                 mmSocket.connect();
                 System.out.println("Socket connected");
                 isConnected = true;
             }
+            sendMessage(msg2send);
 
-            String msg = msg2send;
-            //msg += "\n";
-            OutputStream mmOutputStream = mmSocket.getOutputStream();
-            mmOutputStream.write(msg.getBytes());
 
         } catch (IOException e) {
 
         }
 
     }
+
 
     public void startThread(){
         if(thread == null || !thread.isAlive()){
@@ -210,7 +217,19 @@ public class BTMainActivity extends Activity {
         if(thread != null){
             System.out.println("Trådstatus: " + thread.isAlive());
         }
+
         wt.setBtMsg(action);
+
+
+    }
+
+    public void sendMessage(String msg2send) throws IOException {
+
+        System.out.println("SOcket: Är vi här?");
+        String msg = msg2send;
+        //msg += "\n";
+        OutputStream mmOutputStream = mmSocket.getOutputStream();
+        mmOutputStream.write(msg.getBytes());
     }
 
     final class workerThread implements Runnable {
@@ -229,12 +248,24 @@ public class BTMainActivity extends Activity {
             btMsg = msg;
         }
 
+
         public void run() {
             startSocket(btMsg);
             while (!Thread.currentThread().isInterrupted()) {
                 int bytesAvailable;
                 boolean workDone = false;
+
+                try {
+                    sendMessage(btMsg); //SKICKAR DATA
+                    Thread.sleep(50);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
                 System.out.println("Thread running 1");
+                /*
                 try {
 
                     final InputStream mmInputStream;
@@ -274,6 +305,7 @@ public class BTMainActivity extends Activity {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
+                */
             }
         }
     }

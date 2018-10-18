@@ -24,9 +24,9 @@ public class Accelerometer implements SensorEventListener {
 
         float x = sensorEvent.values[0];
         xValue = Float.toString(x);
-        float y = sensorEvent.values[0];
+        float y = sensorEvent.values[1];
         yValue = Float.toString(y);
-        float z = sensorEvent.values[0];
+        float z = sensorEvent.values[2];
         zValue = Float.toString(z);
 
     }
